@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI English to ISL Video Translator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font and layout styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue background */
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .animate-spin-custom {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        /* Ensure the video player maintains aspect ratio and scales */
+        .aspect-video {
+            aspect-ratio: 16 / 9;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-3xl space-y-8">
+        <header class="text-center pt-8">
+            <h1 class="text-4xl font-extrabold text-gray-800">English to ISL Video Translator</h1>
+            <p class="text-xl text-gray-500 mt-2">Translates English, generates signs, and stitches them into an MP4 video.</p>
+        </header>
+
+        <!-- Input Card -->
+        <div class="card p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4">1. Enter English Text</h2>
+            <textarea id="english-input" class="w-full h-24 p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 transition duration-150 text-gray-700 resize-none" placeholder="Type an English sentence here, e.g., 'What is your name?'"></textarea>
+            
+            <button id="translate-button" class="w-full mt-4 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 transition duration-150 disabled:opacity-50" onclick="handleTranslation()">
+                Generate ISL Video
+            </button>
+            <p id="error-message" class="mt-3 text-red-500 hidden font-medium text-center"></p>
+        </div>
+
+        <!-- Output Card -->
+        <div class="card p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-gray-700 mb-6">2. AI Translation Output</h2>
+            
+            <!-- Loading Indicator -->
+            <div id="loading-spinner" class="flex justify-center items-center space-x-3 text-indigo-600 py-10 hidden">
+                <div class="h-6 w-6 border-4 border-t-4 border-indigo-500 border-t-transparent rounded-full animate-spin-custom"></div>
+                <span class="text-lg font-medium">Connecting to server and generating video...</span>
+            </div>
+
+            <!-- Results Display -->
+            <div id="result-container" class="space-y-6 hidden">
+                
+                <!-- ISL Gloss Output -->
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2 border-b pb-1">Linguistic Translation (ISL Gloss)</h3>
+                    <div id="isl-gloss-output" class="p-4 bg-gray-50 border border-gray-200 rounded-lg text-lg font-mono text-gray-800 break-words">
+                        [ISL Gloss will appear here]
+                    </div>
+                </div>
+
+                <!-- MP4 Video Player -->
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2 border-b pb-1">Generated MP4 Video</h3>
+                    <div id="video-player-container" class="p-4 bg-gray-900 border border-gray-700 rounded-lg text-center">
+                        <p class="text-white font-bold mb-3">Playing Signed Sequence:</p>
+                        <video id="full-video-player" controls loop autoplay class="w-full max-w-lg mx-auto rounded-lg shadow-xl aspect-video" src=""></video>
+                        <p class="text-sm text-gray-400 mt-2">Video generated locally by Python/OpenCV.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- API Setup ---
+        // IMPORTANT: This URL MUST match the address where your Python Flask server is running.
+        const PYTHON_SERVER_URL = 'http://localhost:5000'; 
+        const VIDEO_ENDPOINT = `${PYTHON_SERVER_URL}/generate_video`;
+
+        // --- DOM Elements ---
+        const englishInput = document.getElementById('english-input');
+        const translateButton = document.getElementById('translate-button');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const resultContainer = document.getElementById('result-container');
+        const islGlossOutput = document.getElementById('isl-gloss-output');
+        const errorMessage = document.getElementById('error-message');
+        const fullVideoPlayer = document.getElementById('full-video-player');
+
+        // --- Main Handler ---
+
+        async function handleTranslation() {
+            const englishText = englishInput.value.trim();
+            if (englishText === "") {
+                errorMessage.textContent = "Please enter some English text to translate.";
+                errorMessage.classList.remove('hidden');
+                resultContainer.classList.add('hidden');
+                return;
+            }
+
+            // Reset UI and show loading
+            errorMessage.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            translateButton.disabled = true;
+            islGlossOutput.textContent = '...';
+
+            try {
+                // Prepare request payload for the local Python server
+                const payload = { english_text: englishText };
+
+                const options = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                };
+
+                // Fetch the video URL from the running Python server
+                const response = await fetch(VIDEO_ENDPOINT, options);
+                
+                let result;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    throw new Error('Server returned a non-JSON response. Is the Flask server running correctly?');
+                }
+
+                if (!response.ok) {
+                    // Display the error returned by the Python server
+                    const errorMsg = result.error || "Unknown server error.";
+                    throw new Error(errorMsg);
+                }
+                
+                // Success: Display Gloss and Video
+                islGlossOutput.textContent = result.isl_gloss || "Gloss not returned.";
+                
+                fullVideoPlayer.src = result.video_url;
+                fullVideoPlayer.load(); 
+                
+                // Final UI update
+                resultContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Video Generation Error:", error);
+                errorMessage.textContent = `Process Failed! Server Error: ${error.message}. Please ensure your Python server is running on http://localhost:5000.`;
+                errorMessage.classList.remove('hidden');
+
+            } finally {
+                loadingSpinner.classList.add('hidden');
+                translateButton.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!englishInput.value) {
+                englishInput.value = 'Hello, how are you today?';
+            }
+        });
+    </script>
+</body>
+</html>
