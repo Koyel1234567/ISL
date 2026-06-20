@@ -185,6 +185,10 @@ def serve_video(filename):
     Allows the browser to fetch the generated MP4 file.
     """
     return send_from_directory(VIDEO_DIR, filename)
+    
+@app.route('/')
+def home():
+    return "ISL Backend Server is awake and running smoothly!"
 
 if __name__ == '__main__':
     # Make sure we are running in debug mode for development
