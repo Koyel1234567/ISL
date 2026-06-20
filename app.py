@@ -19,9 +19,9 @@ CORS(app)
 API_KEY = os.environ.get("API_KEY", "")
 
 # API Endpoints (Using the Gemini family of models for compatibility)
-GEMINI_TRANSLATE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={API_KEY}"
-GEMINI_IMAGE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key={API_KEY}"
-
+# API Endpoints (Using the stable Gemini 2.5 models)
+GEMINI_TRANSLATE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+GEMINI_IMAGE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={API_KEY}"
 # Directory to save generated videos
 VIDEO_DIR = 'videos'
 if not os.path.exists(VIDEO_DIR):
