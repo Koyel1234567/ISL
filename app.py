@@ -170,7 +170,7 @@ def generate_video_endpoint():
 
         # --- 5. Return Video URL ---
         # The URL points back to the Flask server to serve the video file.
-        video_url = f"http://localhost:5000/{VIDEO_DIR}/{video_filename}"
+        video_url = f"{request.host_url}{VIDEO_DIR}/{video_filename}"
         return jsonify({"video_url": video_url, "isl_gloss": isl_gloss})
 
     except Exception as e:
