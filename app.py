@@ -137,9 +137,7 @@ def generate_video_endpoint():
                 frames.append(frame)
             else:
                 print(f"Skipping sign due to frame generation failure: {sign}")
-                # --- THE FIX: Add a delay to avoid rate limits ---
-            print("Pausing for 5 seconds to respect API rate limits...")
-            time.sleep(5)
+               
 
         if not frames:
             return jsonify({"error": "Failed to generate any video frames. Check your API key access."}), 500
