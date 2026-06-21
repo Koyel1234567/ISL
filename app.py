@@ -75,44 +75,38 @@ def translate_to_gloss(english_text):
 
 
 def generate_frame_image(sign_word):
-    """Generates a frame with physical signing instructions."""
+    """Generates a single image frame using the free Pollinations API."""
     
-    # Dictionary of specific physical descriptions for signs
-    # Focus on hand shape, palm orientation, and movement
-    sign_descriptions = {
-        "HELLO": "Person performing ISL sign for 'Hello': hand raised near forehead, palm facing forward, fingers straight, waving slightly.",
-        "YOU": "Person performing ISL sign for 'You': index finger pointing directly forward at the viewer, arm extended at shoulder height.",
-        "HOW": "Person performing ISL sign for 'How': two hands with curved fingers touching at fingertips, palms facing downwards, rotating slightly.",
-        "TODAY": "Person performing ISL sign for 'Today': both hands in 'Y' handshape, palms facing up, moving downward simultaneously.",
-        "NAME": "Person performing ISL sign for 'Name': two fingers (index and middle) on both hands touching, tapping together.",
-    }
+    if "[" in sign_word:
+        prompt_text = f"A simple, neutral AI avatar showing the expression related to: {sign_word.strip('[]')}. Close-up, dark background, photorealistic."
+    else:
+        prompt_text = f"A photorealistic, kind AI avatar clearly performing the sign language sign for '{sign_word}', centered, close-up, black background, minimal motion blur, 4k."
 
-    # Get the specific instruction or default to a safe fallback
-    physical_instruction = sign_descriptions.get(sign_word.upper(), f"Person performing ISL sign for '{sign_word}', clear view of handshape.")
+    print(f"Generating image for sign via Pollinations: {sign_word}")
 
-    # Combine the instruction with your quality/aesthetic requirements
-    prompt_text = f"Photorealistic close-up of a person performing ISL. {physical_instruction} Dark background, clear lighting on hands and face, 4k resolution, minimal motion blur."
+    # URL encode the prompt so it's safe for a web request
+    encoded_prompt = urllib.parse.quote(prompt_text)
+    
+    # We add a random seed to avoid caching, and hide the logo
+    seed = int(time.time() * 1000) 
+    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&nologo=true&seed={seed}"
 
-    print(f"Generating image for sign: {sign_word} using prompt: {prompt_text[:50]}...")
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Convert raw image bytes to OpenCV format
+        image_bytes = response.content
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        img_bgr = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    payload = {
-        "contents": [{"parts": [{"text": prompt_text}]}],
-        "generationConfig": {
-            "responseModalities": ["IMAGE"] 
-        }
-    }
+        # Add a small delay just to be polite to their free servers
+        time.sleep(2)
+        return img_bgr
 
-    result = fetch_gemini_api(GEMINI_IMAGE_URL, payload)
-
-    base64_data = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('inlineData', {}).get('data')
-
-    if not base64_data:
+    except Exception as e:
+        print(f"Error generating image from Pollinations: {e}")
         return None
-
-    image_bytes = base64.b64decode(base64_data)
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    
 
 # --- API Endpoint ---
 
