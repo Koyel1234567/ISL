@@ -149,11 +149,12 @@ def generate_video_endpoint():
         FRAME_RATE = 10.0  # Frames per second
         FRAME_REPETITION = 30 # Repeat each sign for 30 frames (3 seconds per sign)
 
-        video_filename = f"isl_output_{os.urandom(4).hex()}.mp4"
+        # THE FIX: Change the extension to .webm
+        video_filename = f"isl_output_{os.urandom(4).hex()}.webm"
         video_path = os.path.join(VIDEO_DIR, video_filename)
 
-        # Use 'mp4v' codec for broader compatibility with different OpenCV backends
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
+        # THE FIX: Use the 'vp80' codec, which web browsers fully support
+        fourcc = cv2.VideoWriter_fourcc(*'vp80') 
         out = cv2.VideoWriter(video_path, fourcc, FRAME_RATE, (frame_width, frame_height))
 
         for frame in frames:
