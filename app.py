@@ -22,7 +22,8 @@ API_KEY = os.environ.get("API_KEY", "")
 # API Endpoints (Using the Gemini family of models for compatibility)
 # API Endpoints (Using the stable Gemini 2.5 models)
 GEMINI_TRANSLATE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
-GEMINI_IMAGE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+# Change this line in your app.py
+GEMINI_IMAGE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
 # Directory to save generated videos
 VIDEO_DIR = 'videos'
 if not os.path.exists(VIDEO_DIR):
@@ -96,7 +97,9 @@ def generate_frame_image(sign_word):
 
     payload = {
         "contents": [{"parts": [{"text": prompt_text}]}],
-        "generationConfig": {"responseModalities": ['IMAGE']},
+        "generationConfig": {
+            "responseModalities": ["IMAGE"] 
+        }
     }
 
     result = fetch_gemini_api(GEMINI_IMAGE_URL, payload)
@@ -109,6 +112,8 @@ def generate_frame_image(sign_word):
     image_bytes = base64.b64decode(base64_data)
     np_arr = np.frombuffer(image_bytes, np.uint8)
     return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    
+
 # --- API Endpoint ---
 
 @app.route('/generate_video', methods=['POST'])
