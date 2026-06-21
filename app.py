@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from PIL import Image
 import time
+import urllib.parse
 
 # --- Flask App Setup ---
 app = Flask(__name__) 
@@ -73,44 +74,38 @@ def translate_to_gloss(english_text):
 
 
 def generate_frame_image(sign_word):
-    """Generates a single image frame for a given sign word."""
+    """Generates a single image frame using the free Pollinations API."""
     
-    # Use a descriptive prompt for the AI
     if "[" in sign_word:
-         # Handle Non-Manual Markers (NMMs)
         prompt_text = f"A simple, neutral AI avatar showing the expression related to: {sign_word.strip('[]')}. Close-up, dark background, photorealistic."
     else:
-        # Create a detailed prompt for the signing action
-        prompt_text = f"A photorealistic, kind AI avatar clearly performing the ISL sign for '{sign_word}', centered, close-up, black background, minimal motion blur, 4k."
+        prompt_text = f"A photorealistic, kind AI avatar clearly performing the sign language sign for '{sign_word}', centered, close-up, black background, minimal motion blur, 4k."
 
-    print(f"Generating image for sign: {sign_word}")
+    print(f"Generating image for sign via Pollinations: {sign_word}")
 
-    # Payload structured for gemini-2.5-flash-image-preview model
-    payload = {
-        "contents": [{
-            "parts": [{"text": prompt_text}]
-        }],
-        "generationConfig": {
-            "responseModalities": ['IMAGE']
-        },
-    }
+    # URL encode the prompt so it's safe for a web request
+    encoded_prompt = urllib.parse.quote(prompt_text)
+    
+    # We add a random seed to avoid caching, and hide the logo
+    seed = int(time.time() * 1000) 
+    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&nologo=true&seed={seed}"
 
-    result = fetch_gemini_api(GEMINI_IMAGE_URL, payload)
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Convert raw image bytes to OpenCV format
+        image_bytes = response.content
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        img_bgr = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    # Extract base64 image data
-    base64_data = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('inlineData', {}).get('data')
+        # Add a small delay just to be polite to their free servers
+        time.sleep(2)
+        return img_bgr
 
-    if not base64_data:
-        print(f"Error: No image data returned for sign {sign_word}.")
+    except Exception as e:
+        print(f"Error generating image from Pollinations: {e}")
         return None
-
-    # Convert base64 string to image bytes and then to OpenCV format (numpy array)
-    image_bytes = base64.b64decode(base64_data)
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    img_bgr = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-    return img_bgr
-
 # --- API Endpoint ---
 
 @app.route('/generate_video', methods=['POST'])
